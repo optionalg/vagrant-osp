@@ -1,0 +1,18 @@
+---
+vms:
+  - name: master
+    box: 'puppetlabs/centos-7.2-64-nocm'
+    providers:
+      - type: virtualbox
+        customize:
+          - [modifyvm, !ruby/sym id, '--memory', 4096]
+    roles:
+      - master
+      - agent
+      - baseline
+
+  - name: agent0
+    box: 'puppetlabs/centos-7.2-64-nocm'
+    roles:
+      - agent
+      - baseline

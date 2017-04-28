@@ -1,0 +1,58 @@
+---
+roles:
+  baseline:
+    private_networks:
+      - {ip: '0.0.0.0', auto_network: true}
+    provisioners:
+      - type: shell
+        inline: |-
+          yum clean all
+          yum makecache fast
+          yum -y install rsync ruby ruby-devel
+
+      - type: shell
+        path: scripts/bootstrap-ssh.sh
+        args: ['<%= File.read(File.expand_path("~/.ssh/adrien+github@sky.pub")) %>']
+
+      - type: hosts
+
+      - type: shell
+        inline: |-
+          systemctl disable firewalld
+          systemctl stop firewalld
+
+  agent:
+    provisioners:
+      - type: shell
+        inline: |-
+          yum -y install http://yum.puppetlabs.com/puppetlabs-release-pc1-el-7.noarch.rpm
+          yum makecache fast
+          yum -y install puppet-agent
+          /opt/puppetlabs/bin/puppet config set --section agent server master
+  master:
+    provisioners:
+      - type: shell
+        inline: |-
+          yum -y install java-1.8.0-openjdk net-tools
+
+      - type: shell
+        inline: |-
+          puppet config set --section master dns_alt_names puppet,master,localhost
+          puppet config set --section master autosign true
+          puppet cert generate kick || true
+
+      - type: shell
+        path: scripts/install-puppetserver.sh
+        args: "5.0.0.master.SNAPSHOT.2017.04.27T1540"
+
+      - type: shell
+        inline: |-
+          yum -y install git
+          gem install r10k --no-rdoc --no-ri
+          mkdir -p /etc/puppetlabs/code
+          mkdir -p /etc/puppetlabs/r10k
+          echo "---" >> /etc/puppetlabs/r10k/r10k.yaml
+          echo "sources:" >> /etc/puppetlabs/r10k/r10k.yaml
+          echo "  puppetserver_perf:" >> /etc/puppetlabs/r10k/r10k.yaml
+          echo "    remote: https://github.com/puppetlabs/puppetlabs-puppetserver_perf_control" >> /etc/puppetlabs/r10k/r10k.yaml
+          echo "    basedir: /etc/puppetlabs/code"
